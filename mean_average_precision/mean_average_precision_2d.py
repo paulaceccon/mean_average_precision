@@ -23,15 +23,16 @@ SOFTWARE.
 """
 
 from .metric_base import MetricBase
-import numpy as np
 from .utils import *
 
+
 class MeanAveragePrecision2d(MetricBase):
-    """ Mean Average Precision for object detection.
+    """Mean Average Precision for object detection.
 
     Arguments:
         num_classes (int): number of classes.
     """
+
     def __init__(self, num_classes):
         self.num_classes = num_classes
         self._init()
@@ -41,7 +42,7 @@ class MeanAveragePrecision2d(MetricBase):
         self._init()
 
     def add(self, preds, gt):
-        """ Add sample to evaluation.
+        """Add sample to evaluation.
 
         Arguments:
             preds (np.array): predicted boxes.
@@ -65,7 +66,7 @@ class MeanAveragePrecision2d(MetricBase):
         self.class_counter = np.concatenate((self.class_counter, class_counter), axis=0)
 
     def value(self, iou_thresholds=[0.5], recall_thresholds=None, mpolicy="greedy"):
-        """ Evaluate Mean Average Precision.
+        """Evaluate Mean Average Precision.
 
         Arguments:
             iou_thresholds (list of float): IOU thresholds.
@@ -86,8 +87,10 @@ class MeanAveragePrecision2d(MetricBase):
                     "<cls_id>":
                     {
                         "ap": float,
-                        "precision": np.array,
-                        "recall": np.array,
+                        "precision": float,
+                        "recall": float,
+                        "tp": int,
+                        "fp": int
                     }
                 },
                 ...
@@ -96,8 +99,10 @@ class MeanAveragePrecision2d(MetricBase):
                     "<cls_id>":
                     {
                         "ap": float,
-                        "precision": np.array,
-                        "recall": np.array,
+                        "precision": float,
+                        "recall": float,
+                        "tp": int,
+                        "fp": int
                     }
                 }
             }
@@ -111,19 +116,35 @@ class MeanAveragePrecision2d(MetricBase):
             metric[t] = {}
             aps_t = np.zeros((1, self.num_classes), dtype=np.float32)
             for class_id in range(self.num_classes):
-                aps_t[0, class_id], precision, recall = self._evaluate_class(
+                aps_t[0, class_id], precision, recall, tp, fp = self._evaluate_class(
                     class_id, t, recall_thresholds, mpolicy
                 )
                 metric[t][class_id] = {}
                 metric[t][class_id]["ap"] = aps_t[0, class_id]
-                metric[t][class_id]["precision"] = precision
-                metric[t][class_id]["recall"] = recall
+                metric[t][class_id]["precision"] = precision.mean()
+                metric[t][class_id]["recall"] = recall.mean()
+                metric[t][class_id]["tp"] = np.sum(tp)
+                metric[t][class_id]["fp"] = np.sum(fp)
+                if metric[t][class_id]["precision"] + metric[t][class_id]["recall"]:
+                    f1 = (
+                        2
+                        * metric[t][class_id]["precision"]
+                        * metric[t][class_id]["recall"]
+                    ) / (
+                        metric[t][class_id]["precision"] + metric[t][class_id]["recall"]
+                    )
+                else:
+                    f1 = 0
+                metric[t][class_id]["f1"] = f1
             aps = np.concatenate((aps, aps_t), axis=0)
+
         metric["mAP"] = aps.mean(axis=1).mean(axis=0)
         return metric
 
-    def _evaluate_class(self, class_id, iou_threshold, recall_thresholds, mpolicy="greedy"):
-        """ Evaluate class.
+    def _evaluate_class(
+        self, class_id, iou_threshold, recall_thresholds, mpolicy="greedy"
+    ):
+        """Evaluate class.
 
         Arguments:
             class_id (int): index of evaluated class.
@@ -138,8 +159,12 @@ class MeanAveragePrecision2d(MetricBase):
             average_precision (np.array)
             precision (np.array)
             recall (np.array)
+            tp (np.array)
+            fp (np.array)
         """
-        table = self.match_table[class_id].sort_values(by=['confidence'], ascending=False)
+        table = self.match_table[class_id].sort_values(
+            by=["confidence"], ascending=False
+        )
         matched_ind = {}
         nd = len(table)
         tp = np.zeros(nd, dtype=np.float64)
@@ -155,27 +180,29 @@ class MeanAveragePrecision2d(MetricBase):
                 order,
                 matched_ind[img_id],
                 iou_threshold,
-                mpolicy
+                mpolicy,
             )
-            if res == 'tp':
+            if res == "tp":
                 tp[d] = 1
                 matched_ind[img_id].append(idx)
-            elif res == 'fp':
+            elif res == "fp":
                 fp[d] = 1
-        precision, recall = compute_precision_recall(tp, fp, self.class_counter[:, class_id].sum())
+        precision, recall = compute_precision_recall(
+            tp, fp, self.class_counter[:, class_id].sum()
+        )
         if recall_thresholds is None:
             average_precision = compute_average_precision(precision, recall)
         else:
             average_precision = compute_average_precision_with_recall_thresholds(
                 precision, recall, recall_thresholds
             )
-        return average_precision, precision, recall
+        return average_precision, precision, recall, tp, fp
 
     def _init(self):
         """ Initialize internal state."""
         self.imgs_counter = 0
         self.class_counter = np.zeros((0, self.num_classes), dtype=np.int32)
-        columns = ['img_id', 'confidence', 'iou', 'difficult', 'crowd']
+        columns = ["img_id", "confidence", "iou", "difficult", "crowd"]
         self.match_table = []
         for i in range(self.num_classes):
             self.match_table.append(pd.DataFrame(columns=columns))

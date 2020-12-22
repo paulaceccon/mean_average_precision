@@ -24,36 +24,30 @@ SOFTWARE.
 
 from setuptools import setup, find_packages
 
-readme = open('README.md').read()
+readme = open("README.md").read()
 
-VERSION = '0.0.2.1'
+VERSION = "0.0.2.1"
 
-requirements = [
-    'numpy',
-    'pandas'
-]
+requirements = ["numpy", "pandas"]
 
 setup(
     # Metadata
-    name='mean_average_precision',
+    name="mean_average_precision",
     version=VERSION,
-    author='Sergei Belousov aka BeS',
-    author_email='sergei.o.belousov@gmail.com',
-    url='https://github.com/bes-dev/mean_average_precision',
-    description='Mean Average Precision evaluator for object detection.',
+    author="Sergei Belousov aka BeS",
+    author_email="sergei.o.belousov@gmail.com",
+    url="https://github.com/bes-dev/mean_average_precision",
+    description="Mean Average Precision evaluator for object detection.",
     long_description=readme,
-    long_description_content_type='text/markdown',
-    license='MIT',
-
+    long_description_content_type="text/markdown",
+    license="MIT",
     # Package info
-    packages=find_packages(exclude=('*test*',)),
-
+    packages=find_packages(exclude=("*test*",)),
     #
     zip_safe=True,
     install_requires=requirements,
-
     # Classifiers
     classifiers=[
-        'Programming Language :: Python :: 3',
+        "Programming Language :: Python :: 3",
     ],
 )

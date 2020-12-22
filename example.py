@@ -1,27 +1,3 @@
-# mAP: Mean Average Precision for Object Detection
-
-A simple library for the evaluation of object detectors.
-
-<p align="center">
-  <img src="resources/img0.jpeg"/>
-</p>
-
-In practice, a **higher mAP** value indicates a **better performance** of your detector, given your ground-truth and set of classes.
-
-## Install package
-
-```bash
-pip install mean_average_precision
-```
-
-## Install the latest version
-
-```bash
-pip install --upgrade git+https://github.com/bes-dev/mean_average_precision.git
-```
-
-## Example
-```python
 import numpy as np
 from mean_average_precision import MetricBuilder
 
@@ -71,4 +47,3 @@ print(
 
 # compute PASCAL VOC metric at the all points
 print(f"VOC PASCAL mAP in all points: {metric_fn.value(iou_thresholds=0.5)}")
-```
